@@ -1,0 +1,11 @@
+LICENSE
+README.md
+pyproject.toml
+site_coverage_planner/__init__.py
+site_coverage_planner/optics.py
+site_coverage_planner.egg-info/PKG-INFO
+site_coverage_planner.egg-info/SOURCES.txt
+site_coverage_planner.egg-info/dependency_links.txt
+site_coverage_planner.egg-info/requires.txt
+site_coverage_planner.egg-info/top_level.txt
+tests/test_optics.py

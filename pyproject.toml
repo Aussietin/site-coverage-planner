@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "site-coverage-planner"
+version = "0.0.1"
+description = "QGIS line-of-sight / coverage planning toolkit (CCTV module 1)"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools]
+packages = ["site_coverage_planner"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
