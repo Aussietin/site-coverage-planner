@@ -1,0 +1,84 @@
+name: Dependabot auto-merge
+
+# Triggers on the "CI" workflow completing and merges only when it succeeded.
+#
+# The older form (`on: pull_request` + `gh pr merge --auto`) relies on branch
+# protection to hold the merge until CI passes. Branch protection AND native
+# auto-merge are both unavailable on a PRIVATE repo on the FREE plan — and there
+# `gh pr merge --auto` does not queue, it merges immediately, so Dependabot PRs
+# land untested the moment they open. workflow_run gives a real CI gate with no
+# Pro plan and no branch protection, and works identically on public/Pro repos.
+#
+# Trade-off: workflow_run workflows only run from the copy of this file on the
+# default branch, so edits here take effect only once merged.
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    runs-on: ubuntu-latest
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.triggering_actor.login == 'dependabot[bot]'
+    steps:
+      - name: Resolve the Dependabot PR for this commit
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          num=$(gh api "repos/$REPO/commits/$SHA/pulls" \
+                 --jq '[.[] | select(.state == "open" and .user.login == "dependabot[bot]")][0].number')
+          if [ -z "$num" ] || [ "$num" = "null" ]; then
+            echo "No open Dependabot PR with head $SHA — nothing to do."
+            echo "number=" >> "$GITHUB_OUTPUT"
+          else
+            echo "Found Dependabot PR #$num"
+            echo "number=$num" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check for a semver-major bump
+        id: major
+        if: steps.pr.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          NUM: ${{ steps.pr.outputs.number }}
+        run: |
+          # Dependabot writes an `updated-dependencies:` block into each commit
+          # message with one `update-type:` line per dependency. Same source
+          # dependabot/fetch-metadata parses, and it catches a major hidden
+          # inside a grouped "bump the all group" PR — which the title never shows.
+          msgs=$(gh api "repos/$REPO/pulls/$NUM/commits" --jq '.[].commit.message')
+          if printf '%s\n' "$msgs" | grep -q 'update-type: version-update:semver-major'; then
+            echo "held=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "held=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Merge (patch & minor only)
+        if: steps.pr.outputs.number != '' && steps.major.outputs.held == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          NUM: ${{ steps.pr.outputs.number }}
+        run: gh pr merge --squash --delete-branch "$NUM" --repo "$REPO"
+
+      - name: Comment on a held major update
+        if: steps.pr.outputs.number != '' && steps.major.outputs.held == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          NUM: ${{ steps.pr.outputs.number }}
+        run: |
+          gh pr comment "$NUM" --repo "$REPO" \
+            --body "CI passed, but this update contains a semver-major bump — held for manual review." || true
