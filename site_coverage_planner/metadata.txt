@@ -1,0 +1,17 @@
+[general]
+name=Site Coverage Planner
+qgisMinimumVersion=3.28
+description=Camera FoV + DORI pixel-density coverage planning on real orthophoto/terrain.
+version=0.1.0
+author=Austin Crozier
+email=austincrozier05@gmail.com
+about=Place a camera, pick its optics, and get its field-of-view footprint and DORI (Detect/Observe/Recognise/Identify) pixel-density band polygons as vector layers over your project's imagery. Module 1 of a broader line-of-sight/coverage planning toolkit; terrain viewshed occlusion and point-to-point wireless modules are planned.
+tracker=https://github.com/Aussietin/site-coverage-planner/issues
+repository=https://github.com/Aussietin/site-coverage-planner
+hasProcessingProvider=yes
+tags=cctv,camera,coverage,dori,viewshed,security,surveillance
+category=Vector
+homepage=https://github.com/Aussietin/site-coverage-planner
+experimental=True
+deprecated=False
+server=False

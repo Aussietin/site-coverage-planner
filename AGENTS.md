@@ -1,7 +1,9 @@
 # Agent instructions — site-coverage-planner
 
 QGIS line-of-sight / coverage planning toolkit. Module 1 = CCTV camera coverage (FoV +
-DORI bands + viewshed). Spike — expiry ~1–2 sessions unless converted to Active.
+DORI bands + viewshed). Converted from spike to Active 2026-09-24 (was triaged to
+backburner 2026-09-23 after the spike time-box elapsed; revived at Austin's go-ahead
+to build out the QGIS plugin scaffold).
 
 - **Stack:** Python 3.11+ (QGIS ships 3.12), PyQGIS / GDAL for the plugin layer. Pure
   optics/DORI math in `site_coverage_planner/optics.py` is QGIS-free and unit-tested.

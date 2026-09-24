@@ -13,7 +13,7 @@ license = { text = "MIT" }
 dev = ["pytest"]
 
 [tool.setuptools]
-packages = ["site_coverage_planner"]
+packages = ["site_coverage_planner", "site_coverage_planner.algorithms"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
