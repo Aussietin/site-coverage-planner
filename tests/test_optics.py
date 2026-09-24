@@ -88,3 +88,33 @@ def test_viewshed_ignores_samples_outside_range():
 def test_viewshed_rejects_nonpositive_distance():
     with pytest.raises(ValueError):
         viewshed_visible(0.0, 4.0, 0.0, 1.6, 0.0, [])
+
+
+def test_dori_band_polygons_cover_all_levels():
+    bands = CAM.dori_band_polygons(origin=(0.0, 0.0), heading_deg=180.0, segments=8)
+    assert set(bands) == {"identify", "recognise", "observe", "detect"}
+
+
+def test_dori_band_polygons_are_closed():
+    bands = CAM.dori_band_polygons(origin=(50.0, 50.0), heading_deg=45.0, segments=8)
+    for poly in bands.values():
+        assert poly[0] == poly[-1]
+
+
+def test_dori_band_polygons_nested_by_radius():
+    origin = (0.0, 0.0)
+    bands = CAM.dori_band_polygons(origin=origin, heading_deg=0.0, segments=8)
+    ranges = {lvl: CAM.dori_range_m(lvl) for lvl in bands}
+    for level, poly in bands.items():
+        max_r = max(math.hypot(x - origin[0], y - origin[1]) for x, y in poly)
+        assert max_r == pytest.approx(ranges[level], rel=1e-6)
+
+
+def test_dori_band_polygons_identify_is_pie_slice():
+    bands = CAM.dori_band_polygons(origin=(0.0, 0.0), heading_deg=0.0, segments=8)
+    assert bands["identify"][0] == (0.0, 0.0)
+
+
+def test_dori_band_polygons_rejects_bad_segments():
+    with pytest.raises(ValueError):
+        CAM.dori_band_polygons(origin=(0.0, 0.0), heading_deg=0.0, segments=0)

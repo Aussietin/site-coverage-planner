@@ -67,6 +67,25 @@ class Camera:
             2.0 * threshold * math.tan(math.radians(h_fov / 2.0))
         )
 
+    def _arc_points(
+        self,
+        origin: tuple[float, float],
+        heading_deg: float,
+        radius_m: float,
+        segments: int,
+    ) -> list[tuple[float, float]]:
+        h_fov, _ = self.fov_deg()
+        ox, oy = origin
+        start = heading_deg - h_fov / 2.0
+        step = h_fov / segments
+        points = []
+        for i in range(segments + 1):
+            bearing = math.radians(start + step * i)
+            points.append(
+                (ox + radius_m * math.sin(bearing), oy + radius_m * math.cos(bearing))
+            )
+        return points
+
     def fov_polygon(
         self,
         origin: tuple[float, float],
@@ -83,18 +102,38 @@ class Camera:
         """
         if segments < 1:
             raise ValueError("segments must be >= 1")
-        h_fov, _ = self.fov_deg()
-        ox, oy = origin
-        start = heading_deg - h_fov / 2.0
-        step = h_fov / segments
-        points = [origin]
-        for i in range(segments + 1):
-            bearing = math.radians(start + step * i)
-            points.append(
-                (ox + distance_m * math.sin(bearing), oy + distance_m * math.cos(bearing))
-            )
-        points.append(origin)
-        return points
+        arc = self._arc_points(origin, heading_deg, distance_m, segments)
+        return [origin, *arc, origin]
+
+    def dori_band_polygons(
+        self,
+        origin: tuple[float, float],
+        heading_deg: float,
+        segments: int = 16,
+    ) -> dict[str, list[tuple[float, float]]]:
+        """Closed ring-sector polygon per DORI level, nearest to farthest.
+
+        Levels partition the FoV footprint into non-overlapping zones:
+        identify (0..identify range), recognise, observe, detect (outermost).
+        Each polygon is ``[*inner arc, *outer arc reversed, inner arc[0]]``,
+        or a plain pie slice for the innermost (identify) band.
+        """
+        if segments < 1:
+            raise ValueError("segments must be >= 1")
+        order = ("identify", "recognise", "observe", "detect")
+        bands: dict[str, list[tuple[float, float]]] = {}
+        inner_radius = 0.0
+        for level in order:
+            outer_radius = self.dori_range_m(level)
+            if inner_radius <= 0.0:
+                outer_arc = self._arc_points(origin, heading_deg, outer_radius, segments)
+                bands[level] = [origin, *outer_arc, origin]
+            else:
+                inner_arc = self._arc_points(origin, heading_deg, inner_radius, segments)
+                outer_arc = self._arc_points(origin, heading_deg, outer_radius, segments)
+                bands[level] = [*inner_arc, *reversed(outer_arc), inner_arc[0]]
+            inner_radius = outer_radius
+        return bands
 
 
 def viewshed_visible(
