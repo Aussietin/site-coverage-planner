@@ -4,6 +4,9 @@ Sources (see ProjectVault [[QGIS CCTV Coverage Plugin]] steal-list):
 - FoV from focal length + sensor size: pinhole model, same as PanoptiCity.
 - DORI bands: IEC 62676-4 — 25 / 62 / 125 / 250 px/m for
   Detect / Observe / Recognise / Identify.
+- Viewshed: straight-line-of-sight check against a terrain profile (no DEM
+  sampling/raster IO here — that's the PyQGIS layer's job to feed this a
+  profile).
 """
 
 from __future__ import annotations
@@ -63,3 +66,61 @@ class Camera:
         return self.h_resolution_px / (
             2.0 * threshold * math.tan(math.radians(h_fov / 2.0))
         )
+
+    def fov_polygon(
+        self,
+        origin: tuple[float, float],
+        heading_deg: float,
+        distance_m: float,
+        segments: int = 16,
+    ) -> list[tuple[float, float]]:
+        """FoV footprint as a closed polygon (pie slice) in map coordinates.
+
+        ``heading_deg`` is the camera's look direction as a compass bearing
+        (0 = north, clockwise-positive), matching QGIS/GIS convention.
+        ``distance_m`` is the radius of the slice, e.g. a DORI range from
+        :meth:`dori_range_m`. Returns ``[origin, arc points..., origin]``.
+        """
+        if segments < 1:
+            raise ValueError("segments must be >= 1")
+        h_fov, _ = self.fov_deg()
+        ox, oy = origin
+        start = heading_deg - h_fov / 2.0
+        step = h_fov / segments
+        points = [origin]
+        for i in range(segments + 1):
+            bearing = math.radians(start + step * i)
+            points.append(
+                (ox + distance_m * math.sin(bearing), oy + distance_m * math.cos(bearing))
+            )
+        points.append(origin)
+        return points
+
+
+def viewshed_visible(
+    camera_elev_m: float,
+    camera_height_m: float,
+    target_elev_m: float,
+    target_height_m: float,
+    target_distance_m: float,
+    profile: list[tuple[float, float]] = (),
+) -> bool:
+    """Straight line-of-sight check between camera and target over terrain.
+
+    ``profile`` is a sequence of ``(distance_from_camera_m, ground_elev_m)``
+    samples strictly between camera and target (any order). Returns False if
+    any sample's ground elevation rises above the camera-target sightline at
+    that distance.
+    """
+    if target_distance_m <= 0:
+        raise ValueError("target_distance_m must be > 0")
+    sight_start = camera_elev_m + camera_height_m
+    sight_end = target_elev_m + target_height_m
+    rise = sight_end - sight_start
+    for distance, ground_elev in profile:
+        if not (0.0 < distance < target_distance_m):
+            continue
+        sightline_elev = sight_start + rise * (distance / target_distance_m)
+        if ground_elev > sightline_elev:
+            return False
+    return True
