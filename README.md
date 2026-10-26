@@ -1,6 +1,12 @@
 # site-coverage-planner
 
-QGIS plugin — line-of-sight / coverage planning toolkit on real orthophoto + terrain.
-Module 1: CCTV camera coverage (FoV polygon, DORI pixel-density bands, viewshed occlusion).
+A QGIS plugin for line-of-sight and coverage planning on an orthophoto and terrain.
 
-Spike — see ProjectVault [[QGIS CCTV Coverage Plugin]].
+Module 1 is CCTV camera coverage: field-of-view polygon, DORI pixel-density
+bands, and viewshed occlusion.
+
+State: early spike, not released. Expect rough edges and no screenshots yet.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
